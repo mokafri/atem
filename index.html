@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Atem</title>
+<meta name="theme-color" content="#0f1a2b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Atem">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  :root{
+    --bg1:#0f1a2b; --bg2:#1b2d45; --fg:#e8eef6; --muted:#8fa3bd;
+    --in:#6fc3df; --hold:#b59cf0; --out:#7fd6a8; --rest:#e6b877; --accent:var(--in);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:radial-gradient(ellipse at 50% 30%,var(--bg2),var(--bg1) 70%);
+    color:var(--fg); display:flex; flex-direction:column; align-items:center;
+    padding:calc(env(safe-area-inset-top) + 16px) 18px calc(env(safe-area-inset-bottom) + 18px);
+    min-height:100%; user-select:none; overflow-x:hidden;
+  }
+  header{text-align:center;width:100%;max-width:420px}
+  h1{font-size:1.25rem;font-weight:600;letter-spacing:.02em}
+  .sub{color:var(--muted);font-size:.85rem;margin-top:4px}
+  .tabs{display:flex;gap:8px;overflow-x:auto;padding:12px 2px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--muted);font-size:.85rem;white-space:nowrap}
+  .tab.on{background:var(--fg);color:var(--bg1);font-weight:600}
+  .tab:disabled{opacity:.4}
+  .stage{flex:1;display:flex;align-items:center;justify-content:center;width:100%;position:relative;min-height:300px}
+  .ring{position:absolute;width:min(74vw,320px);aspect-ratio:1;border-radius:50%;border:1px solid rgba(255,255,255,.08)}
+  .orb{
+    width:min(74vw,320px);aspect-ratio:1;border-radius:50%;
+    background:radial-gradient(circle at 40% 35%,color-mix(in srgb,var(--accent) 70%,white),var(--accent) 55%,color-mix(in srgb,var(--accent) 40%,transparent) 100%);
+    box-shadow:0 0 60px color-mix(in srgb,var(--accent) 45%,transparent);
+    transform:scale(.45); transition-property:transform,background,box-shadow; transition-timing-function:ease-in-out;
+  }
+  .label{position:absolute;text-align:center;pointer-events:none;padding:0 20px}
+  .phase{font-size:1.5rem;font-weight:600;text-shadow:0 1px 8px rgba(0,0,0,.35)}
+  .count{font-size:3.4rem;font-weight:300;font-variant-numeric:tabular-nums;line-height:1.1;text-shadow:0 1px 8px rgba(0,0,0,.35)}
+  .hint{color:var(--fg);opacity:.8;font-size:.9rem;margin-top:6px;text-shadow:0 1px 6px rgba(0,0,0,.4)}
+  .steps{display:flex;gap:6px;margin:6px 0 12px;flex-wrap:wrap;justify-content:center;max-width:420px}
+  .step{padding:5px 10px;border-radius:999px;font-size:.78rem;background:rgba(255,255,255,.06);color:var(--muted);transition:.3s}
+  .step.on{color:#0f1a2b;font-weight:600}
+  .progress{color:var(--muted);font-size:.9rem;margin-bottom:12px;min-height:1.2em}
+  .controls{width:100%;max-width:400px;display:flex;flex-direction:column;gap:10px}
+  button{font:inherit;border:0;cursor:pointer}
+  .main{width:100%;padding:16px;border-radius:16px;font-size:1.1rem;font-weight:600;background:var(--fg);color:var(--bg1)}
+  .main.stop{background:rgba(255,255,255,.1);color:var(--fg)}
+  .row{display:flex;gap:10px;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border-radius:14px;padding:10px 14px}
+  .row span{color:var(--muted);font-size:.9rem}
+  .stepper{display:flex;align-items:center;gap:12px}
+  .stepper button{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.1);color:var(--fg);font-size:1.2rem}
+  .stepper b{min-width:2ch;text-align:center;font-variant-numeric:tabular-nums}
+  .toggle{width:52px;height:30px;border-radius:999px;background:rgba(255,255,255,.15);position:relative;transition:.2s}
+  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--fg);transition:.2s}
+  .toggle.on{background:var(--out)} .toggle.on::after{left:25px}
+  .settings{display:flex;flex-direction:column;gap:8px}
+  .done{color:var(--out)}
+  .info{color:var(--muted);font-size:.8rem;line-height:1.45;background:rgba(255,255,255,.04);border-radius:14px;padding:12px 14px}
+  .info b{color:var(--fg);font-weight:600}
+</style>
+</head>
+<body>
+  <header>
+    <h1 id="title">4-7-8 Atmung</h1>
+    <div class="sub" id="subtitle"></div>
+    <div class="tabs" id="tabs"></div>
+  </header>
+
+  <div class="stage">
+    <div class="ring"></div>
+    <div class="orb" id="orb"></div>
+    <div class="label">
+      <div class="phase" id="phase">Bereit</div>
+      <div class="count" id="count">–</div>
+      <div class="hint" id="hint">Tippe auf Start</div>
+    </div>
+  </div>
+
+  <div class="steps" id="steps"></div>
+  <div class="progress" id="progress"></div>
+
+  <div class="controls">
+    <button class="main" id="start">Start</button>
+    <div class="settings" id="settings">
+      <div class="row"><span id="roundsLabel">Runden</span>
+        <div class="stepper"><button id="minus" aria-label="weniger">−</button><b id="rounds">4</b><button id="plus" aria-label="mehr">+</button></div>
+      </div>
+      <div class="row"><span>Ton bei Phasenwechsel</span><button class="toggle on" id="sound" aria-label="Ton"></button></div>
+    </div>
+    <div class="info" id="info"></div>
+  </div>
+
+<script>
+// Phasentypen: in = einatmen (wächst), top = nachatmen (wächst weiter), hold = halten voll, out = ausatmen (schrumpft), rest = halten leer
+const T = {
+  in:   {color:'--in',   scale:1,   freq:440},
+  top:  {color:'--in',   scale:1.12,freq:494},
+  hold: {color:'--hold', scale:null,freq:523},
+  out:  {color:'--out',  scale:.45, freq:349},
+  rest: {color:'--rest', scale:null,freq:392},
+};
+const TECH = [
+  { id:'478', name:'4-7-8', title:'4-7-8 Atmung', sub:'Zum Runterkommen & Einschlafen',
+    rounds:4, min:1, max:12, unit:'Runden',
+    phases:[
+      {t:'in',  n:'Einatmen', s:4, h:'durch die Nase'},
+      {t:'hold',n:'Halten',   s:7, h:'Luft anhalten'},
+      {t:'out', n:'Ausatmen', s:8, h:'durch den Mund – „wusch“'},
+    ],
+    info:'<b>Wofür:</b> Abends, bei Unruhe, zum Einschlafen. <b>Wie:</b> Zungenspitze hinter die oberen Schneidezähne, hörbar durch den Mund ausatmen. Für den Anfang 4 Runden. Bei Schwindel einfach normal weiteratmen.'
+  },
+  { id:'box', name:'Box', title:'Box-Atmung', sub:'Fokus & Ruhe unter Druck',
+    rounds:6, min:2, max:20, unit:'Runden',
+    phases:[
+      {t:'in',  n:'Einatmen', s:4, h:'durch die Nase'},
+      {t:'hold',n:'Halten',   s:4, h:'voll'},
+      {t:'out', n:'Ausatmen', s:4, h:'langsam'},
+      {t:'rest',n:'Halten',   s:4, h:'leer'},
+    ],
+    info:'<b>Wofür:</b> Vor Gesprächen, Prüfungen, Präsentationen – beruhigt, ohne müde zu machen. <b>Wie:</b> Vier gleich lange Seiten wie ein Quadrat. Wenn 4 Sek. zu lang sind, mit 3 anfangen.'
+  },
+  { id:'coh', name:'Kohärent', title:'Kohärentes Atmen', sub:'≈ 5,5 Atemzüge pro Minute',
+    rounds:5, min:1, max:20, unit:'Minuten', perMinute:true,
+    phases:[
+      {t:'in',  n:'Einatmen', s:5.5, h:'weich, durch die Nase'},
+      {t:'out', n:'Ausatmen', s:5.5, h:'weich, durch die Nase'},
+    ],
+    info:'<b>Wofür:</b> Für den Alltag, gegen Stress, als tägliche Routine (z.&nbsp;B. 5–10 Min.). <b>Wie:</b> Ruhig und gleichmäßig, ohne Pausen und ohne zu pressen – eher sanft als tief.'
+  },
+  { id:'sigh', name:'Seufzer', title:'Physiologischer Seufzer', sub:'Schnelle Hilfe bei akutem Stress',
+    rounds:3, min:1, max:10, unit:'Atemzüge',
+    phases:[
+      {t:'in',  n:'Einatmen', s:2, h:'tief durch die Nase'},
+      {t:'top', n:'Nachatmen',s:1, h:'kurz noch etwas Luft dazu'},
+      {t:'out', n:'Ausatmen', s:6, h:'lang durch den Mund'},
+    ],
+    info:'<b>Wofür:</b> Wenn es gerade akut stressig ist – schon 1–3 Atemzüge helfen. <b>Wie:</b> Zweimal hintereinander durch die Nase einatmen (das zweite Mal kurz „auffüllen“), dann lang und vollständig durch den Mund ausatmen.'
+  },
+  { id:'ext', name:'4-6', title:'Verlängerte Ausatmung', sub:'Sanft & für Einsteiger',
+    rounds:3, min:1, max:15, unit:'Minuten', perMinute:true,
+    phases:[
+      {t:'in',  n:'Einatmen', s:4, h:'durch die Nase'},
+      {t:'out', n:'Ausatmen', s:6, h:'langsam, Lippen leicht gespitzt'},
+    ],
+    info:'<b>Wofür:</b> Die einfachste Variante ohne Luftanhalten – gut, wenn 4-7-8 noch zu anstrengend ist. <b>Wie:</b> Die Ausatmung ist länger als die Einatmung, das aktiviert den Ruhenerv (Parasympathikus).'
+  },
+  { id:'nadi', name:'Wechselatmung', title:'Wechselatmung', sub:'Nadi Shodhana – ausgleichend',
+    rounds:5, min:1, max:15, unit:'Runden',
+    phases:[
+      {t:'in',  n:'Links ein', s:4, h:'rechtes Nasenloch zuhalten'},
+      {t:'out', n:'Rechts aus',s:4, h:'linkes zuhalten, rechts öffnen'},
+      {t:'in',  n:'Rechts ein',s:4, h:'durch rechts einatmen'},
+      {t:'out', n:'Links aus', s:4, h:'rechts zuhalten, links öffnen'},
+    ],
+    info:'<b>Wofür:</b> Zum Ausgleichen und Sammeln, z.&nbsp;B. vor Meditation oder nach der Arbeit. <b>Wie:</b> Rechter Daumen schließt das rechte, Ringfinger das linke Nasenloch. Nicht bei verstopfter Nase.'
+  },
+];
+
+const $ = id => document.getElementById(id);
+const orb=$('orb'), phaseEl=$('phase'), countEl=$('count'), hintEl=$('hint'), progEl=$('progress'), startBtn=$('start');
+let cur=TECH[0], roundsBy={}, sound=true, running=false, timer=null, tickTimer=null, ctx=null, wakeLock=null, lastScale=.45;
+try{
+  const s=JSON.parse(localStorage.getItem('atem')||'{}');
+  if(s.roundsBy) roundsBy=s.roundsBy;
+  if(s.sound===false) sound=false;
+  if(s.tech) cur=TECH.find(t=>t.id===s.tech)||cur;
+}catch(e){}
+const save=()=>{ try{ localStorage.setItem('atem',JSON.stringify({roundsBy,sound,tech:cur.id})) }catch(e){} };
+const getRounds=()=>roundsBy[cur.id]||cur.rounds;
+
+function buildTabs(){
+  $('tabs').innerHTML='';
+  TECH.forEach(t=>{
+    const b=document.createElement('button');
+    b.className='tab'+(t===cur?' on':''); b.textContent=t.name;
+    b.onclick=()=>{ if(running) return; cur=t; save(); renderAll(); b.scrollIntoView({inline:'center',behavior:'smooth',block:'nearest'}); };
+    $('tabs').appendChild(b);
+  });
+}
+function buildSteps(){
+  $('steps').innerHTML='';
+  cur.phases.forEach((p,i)=>{
+    const d=document.createElement('div'); d.className='step'; d.id='st-'+i;
+    d.textContent=`${p.n} ${String(p.s).replace('.',',')}`;
+    $('steps').appendChild(d);
+  });
+}
+function renderAll(){
+  document.title=cur.title; $('title').textContent=cur.title; $('subtitle').textContent=cur.sub;
+  $('rounds').textContent=getRounds(); $('roundsLabel').textContent=cur.unit;
+  $('sound').classList.toggle('on',sound); $('info').innerHTML=cur.info;
+  buildTabs(); buildSteps();
+}
+renderAll();
+
+$('minus').onclick=()=>{ const r=getRounds(); if(r>cur.min){roundsBy[cur.id]=r-1;renderAll();save();} };
+$('plus').onclick =()=>{ const r=getRounds(); if(r<cur.max){roundsBy[cur.id]=r+1;renderAll();save();} };
+$('sound').onclick=()=>{ sound=!sound; renderAll(); save(); };
+
+function beep(freq){
+  if(!sound||!ctx) return;
+  try{
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(0,ctx.currentTime);
+    g.gain.linearRampToValueAtTime(.18,ctx.currentTime+.05);
+    g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.9);
+    o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime+1);
+  }catch(e){}
+}
+function buzz(ms){ try{ navigator.vibrate && navigator.vibrate(ms) }catch(e){} }
+function setAccent(v){ document.documentElement.style.setProperty('--accent',`var(${v})`); }
+function markStep(i){ cur.phases.forEach((p,k)=>{ const el=$('st-'+k); if(!el) return; const on=k===i; el.classList.toggle('on',on); el.style.background= on ? `var(${T[p.t].color})` : ''; }); }
+
+// Gesamtzahl Zyklen: bei "Minuten" aus Zykluslänge berechnen
+function totalCycles(){
+  const r=getRounds();
+  if(!cur.perMinute) return r;
+  const len=cur.phases.reduce((a,p)=>a+p.s,0);
+  return Math.max(1,Math.round(r*60/len));
+}
+
+function runPhase(cycle, idx, total){
+  if(!running) return;
+  const p=cur.phases[idx], ty=T[p.t];
+  setAccent(ty.color); markStep(idx);
+  phaseEl.textContent=p.n; hintEl.textContent=p.h;
+  progEl.textContent = cur.perMinute ? `Atemzug ${cycle} von ${total}` : `${cur.unit==='Atemzüge'?'Atemzug':'Runde'} ${cycle} von ${total}`;
+  if(ty.scale!==null){ orb.style.transitionDuration=p.s+'s'; orb.style.transform=`scale(${ty.scale})`; lastScale=ty.scale; }
+  beep(ty.freq); buzz(50);
+  const end=performance.now()+p.s*1000;
+  const tick=()=>{ const left=Math.ceil((end-performance.now())/1000); countEl.textContent=Math.max(left,1); };
+  tick(); tickTimer=setInterval(tick,200);
+  timer=setTimeout(()=>{
+    clearInterval(tickTimer);
+    if(idx<cur.phases.length-1) runPhase(cycle, idx+1, total);
+    else if(cycle<total) runPhase(cycle+1, 0, total);
+    else finish(total);
+  }, p.s*1000);
+}
+
+async function start(){
+  try{ ctx = ctx || new (window.AudioContext||window.webkitAudioContext)(); await ctx.resume(); }catch(e){ ctx=null; }
+  try{ wakeLock = await navigator.wakeLock?.request('screen'); }catch(e){}
+  running=true;
+  startBtn.textContent='Stopp'; startBtn.classList.add('stop');
+  $('settings').style.display='none'; $('info').style.display='none';
+  document.querySelectorAll('.tab').forEach(b=>b.disabled=true);
+  phaseEl.textContent='Ankommen'; hintEl.textContent='Schultern locker, gleich geht es los';
+  setAccent('--out'); orb.style.transitionDuration='2s'; orb.style.transform='scale(.45)';
+  let c=3; countEl.textContent=c; progEl.textContent='';
+  const total=totalCycles();
+  timer=setInterval(()=>{ c--; if(c>0){countEl.textContent=c;} else { clearInterval(timer); runPhase(1,0,total); } },1000);
+}
+function stop(msg){
+  running=false; clearInterval(timer); clearTimeout(timer); clearInterval(tickTimer);
+  try{ wakeLock?.release(); }catch(e){} wakeLock=null;
+  startBtn.textContent='Start'; startBtn.classList.remove('stop');
+  $('settings').style.display=''; $('info').style.display='';
+  document.querySelectorAll('.tab').forEach(b=>b.disabled=false);
+  markStep(-1); setAccent('--in');
+  orb.style.transitionDuration='1s'; orb.style.transform='scale(.45)';
+  phaseEl.textContent=msg||'Bereit'; countEl.textContent='–';
+  hintEl.textContent= msg ? 'Gut gemacht 🌙' : 'Tippe auf Start';
+  if(!msg) progEl.textContent='';
+}
+function finish(total){
+  beep(392); setTimeout(()=>beep(523),350); buzz([80,80,80]);
+  stop('Fertig');
+  const what = cur.perMinute ? `${getRounds()} Minuten` : `${total} ${cur.unit}`;
+  progEl.innerHTML=`<span class="done">${what} geschafft</span>`;
+}
+startBtn.onclick=()=> running ? stop() : start();
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&running){ try{ navigator.wakeLock?.request('screen').then(w=>wakeLock=w).catch(()=>{}) }catch(e){} } });
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
+</script>
+</body>
+</html>
